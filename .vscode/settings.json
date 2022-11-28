@@ -1,0 +1,6 @@
+{
+    "editor.fontFamily": "'Cascadia Code', 'Droid Sans Mono', 'monospace', monospace",
+    "files.associations": {
+        "string": "cpp"
+    }
+}
