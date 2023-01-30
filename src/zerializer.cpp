@@ -1,6 +1,5 @@
-#include <zerializer.hpp>
-
-#include <cassert>
+#include <zerializer/zerializer.hpp>
+#include <stdexcept>
 
 namespace zeus
 {
@@ -16,6 +15,11 @@ namespace zeus
         {
             throw std::runtime_error("Runtime Error: " + filename + " is not open!");
         }
+    }
+
+    void Zerializer::InsertHeader(const std::string& title)
+    {
+        m_FileOut << title << ":" << lineEnd;
     }
 
     void Zerializer::Serialize(const std::string& key, const std::string& value)
@@ -56,24 +60,29 @@ namespace zeus
     
     std::string Zerializer::DeserializeStr(const std::string& key) const
     {
+        return "";
     }
     
     int Zerializer::DeserializeInt(const std::string& key) const
     {
+        return 0;
     }
     
     double Zerializer::DeserializeDbl(const std::string& key) const
     {
+        return 0.0;
     }
     
     template <typename T>
     std::vector<T> Zerializer::DeserializeVec(const std::string& key) const
     {
+        return {};
     }
     
     template <typename T>
     std::vector<std::vector<T>> Zerializer::DeserializeVec2(const std::string& key) const
     {
+        return {{}};
     }
 
     void Zerializer::End()
