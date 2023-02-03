@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <stack>
 
 namespace zeus
 {
@@ -12,7 +13,8 @@ namespace zeus
     {
         XML,
         JSON,
-        YAML
+        YAML,
+        PROPERTIES
     };
 
     class SerialInfo
@@ -36,12 +38,14 @@ namespace zeus
         std::string m_Filename;
         std::ifstream m_FileIn;
         std::ofstream m_FileOut;
+        std::stack<std::string> m_HeadersStack;
 
     public:
         Zerializer() = default;
 
         void Start(const std::string& filename, SerialInfo serialInfo);
         void InsertHeader(const std::string& title);
+        void EndHeader();
 
         void Serialize(const std::string& key, const std::string& value);
         void Serialize(const std::string& key, int value);

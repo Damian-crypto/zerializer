@@ -19,22 +19,45 @@ namespace zeus
 
     void Zerializer::InsertHeader(const std::string& title)
     {
-        m_FileOut << title << ":" << lineEnd;
+        m_HeadersStack.push(title);
+        if (m_Info.SerializationType == SerialType::PROPERTIES)
+        {
+            m_FileOut << title << ":" << lineEnd;
+        }
+    }
+
+    void Zerializer::EndHeader()
+    {
+        string recentHeader = m_HeadersStack.top();
+        m_HeadersStack.pop();
+        if (m_Info.SerializationType == SerialType::PROPERTIES)
+        {
+            m_FileOut << lineEnd;
+        }
     }
 
     void Zerializer::Serialize(const std::string& key, const std::string& value)
     {
-        m_FileOut << key << " : " << value << lineEnd;
+        if (m_Info.SerializationType == SerialType::PROPERTIES)
+        {
+            m_FileOut << key << " : " << value << lineEnd;
+        }
     }
     
     void Zerializer::Serialize(const std::string& key, int value)
     {
-        m_FileOut << key << " : " << std::to_string(value) << lineEnd;
+        if (m_Info.SerializationType == SerialType::PROPERTIES)
+        {
+            m_FileOut << key << " : " << std::to_string(value) << lineEnd;
+        }
     }
     
     void Zerializer::Serialize(const std::string& key, double value)
     {
-        m_FileOut << key << " : " << std::to_string(value) << lineEnd;
+        if (m_Info.SerializationType == SerialType::PROPERTIES)
+        {
+            m_FileOut << key << " : " << std::to_string(value) << lineEnd;
+        }
     }
     
     template <typename T, typename ToString>

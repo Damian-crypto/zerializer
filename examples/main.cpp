@@ -18,7 +18,7 @@ int main()
 
     zeus::Zerializer zerializer;
     zeus::SerialInfo info;
-    info.SerializationType = zeus::SerialType::XML;
+    info.SerializationType = zeus::SerialType::PROPERTIES;
 
     zerializer.Start("person_data.dat", info);
     zerializer.InsertHeader("Person-1");
