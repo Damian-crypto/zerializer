@@ -137,6 +137,7 @@ std::vector<std::vector<T>> zeus::Zerializer::DeserializeVec2(const std::string&
 {
     std::string tag = m_ReadingHeader + key;
     size_t rows = m_HeaderData[key][0];
+    size_t cols = m_HeaderData[key][1];
 
     std::vector<std::vector<T>> res(rows);
     if (m_Data.find(tag) != m_Data.end())
@@ -146,12 +147,16 @@ std::vector<std::vector<T>> zeus::Zerializer::DeserializeVec2(const std::string&
         size_t endpos = value.find(")", begpos + 1);
         for (size_t row = 0; row < rows; row++)
         {
+            int col = 0;
             while (begpos != std::string::npos)
             {
                 std::string token = value.substr(begpos + 1, endpos - begpos - 1);
                 res[row].push_back(convert(token));
                 begpos = value.find("(", endpos + 1);
                 endpos = value.find(")", begpos + 1);
+                col++;
+                if (col == cols)
+                    break;
             }
         }
     }

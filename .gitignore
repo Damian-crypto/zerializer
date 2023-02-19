@@ -35,6 +35,9 @@
 [Bb]uild/
 [Aa]rch/
 
+# Editore preferences
+*.subl*
+
 # Cmake exclude
 CMakeLists.txt.user
 CMakeCache.txt

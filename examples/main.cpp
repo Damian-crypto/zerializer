@@ -88,19 +88,23 @@ int main()
     std::cout << "cellgap: " << zerializer.DeserializeDbl("cellgap") << std::endl;
     std::vector<std::vector<std::vector<int>>> mp = zerializer.DeserializeVec2<std::vector<int>>("levelmap", sToVec);
     std::cout << "levelmap:" << std::endl;
+    int r = 0;
     for (const auto& row : mp)
     {
+        int c = 0;
         for (const auto& cell : row)
         {
-            std::cout << "(";
+            std::cout << "==> [" << r << "][" << c << "] (";
             for (int i = 0; i < cell.size(); i++)
             {
                 std::cout << cell[i];
                 if (i < cell.size() - 1)
                     std::cout << ", ";
             }
+            c++;
             std::cout << ") ";
         }
+        r++;
         std::cout << std::endl;
     }
 
