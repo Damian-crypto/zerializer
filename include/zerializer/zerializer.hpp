@@ -110,7 +110,8 @@ template <typename T, typename ToVec>
 std::vector<T> zeus::Zerializer::DeserializeVec(const std::string& key, ToVec convert)
 {
     std::string tag = m_ReadingHeader + key;
-    std::stringstream ss(tag);
+    std::stringstream ss;
+    ss << tag;
     for (int dim : m_HeaderData[key])
     {
         ss << "[" << dim << "]";
