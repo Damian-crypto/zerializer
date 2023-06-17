@@ -1,21 +1,30 @@
-#include <zerializer/zerializer.hpp>
-
-#include <stdexcept>
+#include "zerializer.hpp"
 #include <limits>
+#include <cassert>
 
 namespace zeus
 {
-    void Zerializer::StartSerialize(const std::string& filename, SerialInfo serialInfo)
+    Zerializer::Zerializer()
+    {
+        std::cout << "Zerializer started!" << std::endl;
+    }
+
+    Zerializer::~Zerializer()
+    {
+        std::cout << "Zerializer stopped!" << std::endl;
+    }
+
+    void Zerializer::StartSerialize(std::string filename, SerialInfo serialInfo)
     {
         m_Info = serialInfo;
         m_Filename = filename;
 
         m_FileOut = std::ofstream(filename);
 
-        if (!m_FileOut.is_open())
-        {
-            throw std::runtime_error("Runtime Error: " + filename + " is not open!");
-        }
+        std::string err = "\"" + filename + "\" couldn't find!";
+        assert(m_FileOut.is_open() && err.c_str());
+
+        std::cout << "Serialization started!" << std::endl;
     }
 
     void Zerializer::InsertHeader(const std::string& title)
@@ -37,7 +46,7 @@ namespace zeus
             m_FileOut << m_WritingHeader << key << ": " << value << lineEnd;
         }
     }
-    
+
     void Zerializer::Serialize(const std::string& key, int value)
     {
         if (m_Info.SerializationType == SerialType::PROPERTIES)
@@ -45,13 +54,19 @@ namespace zeus
             m_FileOut << m_WritingHeader << key << ": " << std::to_string(value) << lineEnd;
         }
     }
-    
+
     void Zerializer::Serialize(const std::string& key, double value)
     {
         if (m_Info.SerializationType == SerialType::PROPERTIES)
         {
             m_FileOut << m_WritingHeader << m_WritingHeader << key << ": " << std::to_string(value) << lineEnd;
         }
+    }
+
+    void Zerializer::Flush()
+    {
+        m_FileOut.flush();
+        m_FileOut.close();
     }
 
     inline static void lstrip(std::string& str)
@@ -70,8 +85,10 @@ namespace zeus
         rstrip(str);
     }
 
-    void Zerializer::StartDeserialize(const std::string& filename, SerialInfo serialInfo)
+    void Zerializer::StartDeserialize(std::string filename, SerialInfo serialInfo)
     {
+        m_Filename = filename;
+
         if (m_FileOut.is_open())
         {
             m_FileOut.flush();
@@ -79,12 +96,23 @@ namespace zeus
         }
 
         m_FileIn = std::ifstream(filename, std::ios::ate);
+        std::string err = "\"" + filename + "\" couldn't find!";
+        assert(m_FileIn.is_open() && err.c_str());
         long filesize = m_FileIn.tellg();
+        assert(filesize > 0 && "Deserializing an empty file!");
         m_FileIn.seekg(0, std::ios::beg);
+
+        std::cout << "Deserialization started!" << std::endl;
 
         std::string line;
         while (getline(m_FileIn, line))
         {
+            if (line.find("#") != std::string::npos)
+                continue;
+
+            strip(line);
+
+            // If there is a colon, it is a key-value pair other wise it is a header
             size_t separator = line.find(":");
             if (separator != std::string::npos)
             {
@@ -92,6 +120,8 @@ namespace zeus
                 strip(key);
                 std::string value = line.substr(separator + 1);
                 strip(value);
+
+                key = m_ReadingHeader + key;
 
                 if (key.find('[') != std::string::npos)
                 {
@@ -106,12 +136,13 @@ namespace zeus
                         begpos = key.find('[', endpos);
                     }
 
+                    // If the key has [] brackets then it has dimensions otherwise normal
                     begpos = key.find('[');
                     endpos = key.find_last_of(']');
                     if (begpos != std::string::npos)
                         key.erase(begin(key) + begpos, begin(key) + endpos + 1);
 
-                    m_HeadersStack.push(key);
+                    // This take into consideration when serializing and deserializing lists
                     m_HeaderData[key] = dim;
 
                     if (!value.empty())
@@ -124,29 +155,75 @@ namespace zeus
                     m_Data[key] = value;
                 }
             }
-            else
+            else if (!line.empty())
             {
-                const std::string& most_recent_header = m_HeadersStack.top();
-                m_Data[most_recent_header].append(" ").append(line);
+                if (!m_HeadersStack.empty())
+                {
+                    std::string key = m_HeadersStack.top();
+                    std::string rev = key;
+                    std::reverse(begin(rev), end(rev));
+                    if (rev == line)
+                    {
+                        key = key + "_";
+                        auto it = m_ReadingHeader.find(key);
+                        if (it != std::string::npos)
+                        {
+                            m_ReadingHeader.erase(it, key.length());
+                            m_HeadersStack.pop();
+                        }
+                        continue;
+                    }
+                }
+
+                m_ReadingHeader.append(line).append("_");
+                m_HeadersStack.push(line);
+                m_Data[line] = "";
             }
+            //else if (!m_HeadersStack.empty())
+            //{
+            //    const std::string& most_recent_header = m_HeadersStack.top();
+            //    m_Data[most_recent_header].append(" ").append(line);
+            //}
         }
+
+        std::cout << "Deserialization finished!" << std::endl;
+
+        // Clearing up variables
+        m_ReadingHeader = "";
+        m_WritingHeader = "";
+        while (!m_HeadersStack.empty())
+            m_HeadersStack.pop();
     }
 
     std::string Zerializer::DeserializeStr(const std::string& key)
     {
-        return m_Data[m_ReadingHeader + key];
-    }
-    
-    int Zerializer::DeserializeInt(const std::string& key)
-    {
-        return std::stoi(m_Data[m_ReadingHeader + key]);
-    }
-    
-    double Zerializer::DeserializeDbl(const std::string& key)
-    {
-        return std::stod(m_Data[m_ReadingHeader + key]);
+        std::string tag = m_ReadingHeader + key;
+        assert(m_Data.find(tag) != m_Data.end() && "Deserializing invalid key!");
+        return m_Data[tag];
     }
 
+    int Zerializer::DeserializeInt(const std::string& key)
+    {
+        std::string tag = m_ReadingHeader + key;
+        assert(m_Data.find(tag) != m_Data.end() && "Deserializing invalid key!");
+        return std::stoi(m_Data[tag]);
+    }
+
+    double Zerializer::DeserializeDbl(const std::string& key)
+    {
+        std::string tag = m_ReadingHeader + key;
+        assert(m_Data.find(tag) != m_Data.end() && "Deserializing invalid key!");
+        return std::stod(m_Data[tag]);
+    }
+
+    /**
+     * Start reading a subsection of the script. From now all the readings
+     * are specific to the current header (not global).
+     *
+     * @param title: header name/title
+     *
+     * @return return true if the header exists otherwise false.
+     */
     bool Zerializer::ReadHeader(const std::string& title)
     {
         if (m_Data.find(title) != m_Data.end())
@@ -160,6 +237,16 @@ namespace zeus
         return false;
     }
 
+    bool Zerializer::HasProperty(const std::string& key)
+    {
+        std::string tag = m_ReadingHeader + key;
+        return m_Data.find(tag) != m_Data.end();
+    }
+
+    /**
+     * Stop reading the current header. Back to the previous header if exists.
+     * Otherwise to the global scope.
+     */
     void Zerializer::EndHeader()
     {
         if (m_FileOut.is_open() && !m_HeadersStack.empty())
@@ -172,7 +259,7 @@ namespace zeus
                 m_HeadersStack.pop();
             }
         }
-        
+
         if (m_FileIn.is_open() && !m_ReadingHeaderStack.empty())
         {
             std::string key = m_ReadingHeaderStack.top() + "_";

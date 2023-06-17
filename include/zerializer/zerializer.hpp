@@ -9,6 +9,7 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <assert.h>
 
 namespace zeus
 {
@@ -48,9 +49,10 @@ namespace zeus
         };
 
     public:
-        Zerializer() = default;
+        Zerializer();
+        ~Zerializer();
 
-        void StartSerialize(const std::string& filename, SerialInfo serialInfo);
+        void StartSerialize(std::string filename, SerialInfo serialInfo);
         void InsertHeader(const std::string& title);
 
         void Serialize(const std::string& key, const std::string& value);
@@ -60,17 +62,19 @@ namespace zeus
         void Serialize(const std::string& key, const std::vector<T>& value, ToString convert);
         template <typename T, typename ToString>
         void Serialize(const std::string& key, const std::vector<std::vector<T>>& value, ToString convert);
+        void Flush();
 
-        void StartDeserialize(const std::string& filename, SerialInfo serialInfo);
+        void StartDeserialize(std::string filename, SerialInfo serialInfo);
         bool ReadHeader(const std::string& title);
+        bool HasProperty(const std::string& key);
         std::string DeserializeStr(const std::string& key);
         int DeserializeInt(const std::string& key);
         double DeserializeDbl(const std::string& key);
 
         template <typename T, typename ToVec>
-        std::vector<T> DeserializeVec(const std::string& key, ToVec convert);
+        std::vector<T> DeserializeVec(std::string key, ToVec convert);
         template <typename T, typename ToVec2>
-        std::vector<std::vector<T>> DeserializeVec2(const std::string& key, ToVec2 convert);
+        std::vector<std::vector<T>> DeserializeVec2(std::string key, ToVec2 convert);
 
         void EndHeader();
     };
@@ -107,36 +111,41 @@ void zeus::Zerializer::Serialize(const std::string& key, const std::vector<std::
 }
 
 template <typename T, typename ToVec>
-std::vector<T> zeus::Zerializer::DeserializeVec(const std::string& key, ToVec convert)
+std::vector<T> zeus::Zerializer::DeserializeVec(std::string key, ToVec convert)
 {
     std::string tag = m_ReadingHeader + key;
-    std::stringstream ss;
-    ss << tag;
-    for (int dim : m_HeaderData[key])
-    {
-        ss << "[" << dim << "]";
-    }
-    tag = ss.str();
+    assert(m_HeaderData.find(tag) != m_HeaderData.end(), "[ZERIALIZER]::[ERROR]: Deserializing invalid key!");
 
     std::vector<T> res;
     if (m_Data.find(tag) != m_Data.end())
     {
         std::string value = m_Data[m_ReadingHeader + key];
-        ss.str(value);
-        std::string token;
-        while (ss >> token)
+
+        size_t begin = value.find('(');
+        size_t end = value.find(')');
+        while (begin != std::string::npos)
         {
+            std::string token = value.substr(begin + 1, end - begin - 1);
             res.push_back(convert(token));
+            begin = value.find('(', begin + 1);
+            end = value.find(')', end + 1);
         }
+    }
+    else
+    {
+        std::string msg = "[ZERIALIZER]::[ERROR]: Deserializing invalid tag \"" + tag + "\"!";
+        assert(false, msg);
     }
 
     return res;
 }
 
 template <typename T, typename ToVec2>
-std::vector<std::vector<T>> zeus::Zerializer::DeserializeVec2(const std::string& key, ToVec2 convert)
+std::vector<std::vector<T>> zeus::Zerializer::DeserializeVec2(std::string key, ToVec2 convert)
 {
     std::string tag = m_ReadingHeader + key;
+    assert(m_HeaderData.find(tag) != m_HeaderData.end(), "[ZERIALIZER]::[ERROR]: Deserializing invalid key!");
+
     size_t rows = m_HeaderData[key][0];
     size_t cols = m_HeaderData[key][1];
 
@@ -160,6 +169,11 @@ std::vector<std::vector<T>> zeus::Zerializer::DeserializeVec2(const std::string&
                     break;
             }
         }
+    }
+    else
+    {
+        std::string msg = "[ZERIALIZER]::[ERROR]: Deserializing invalid tag \"" + tag + "\"!";
+        assert(false, msg);
     }
 
     return { res };
